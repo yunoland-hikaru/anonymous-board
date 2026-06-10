@@ -375,19 +375,33 @@
   }
 
   .img-upload-label {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 6px 14px;
+    padding: 8px 16px;
     border: 1px dashed var(--border);
     border-radius: var(--radius-sm);
     color: var(--muted);
     font-size: 13px;
     cursor: pointer;
     transition: all 0.15s;
+    min-height: 44px;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
   }
 
   .img-upload-label:hover { border-color: var(--accent); color: var(--accent); }
+  .img-upload-label:active { opacity: 0.7; }
+
+  .img-upload-label input[type="file"] {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
 
   .img-preview-wrap {
     position: relative;
@@ -425,12 +439,14 @@
 
   .post-image {
     width: 100%;
+    max-width: 100%;
     max-height: 360px;
     object-fit: cover;
     border-radius: var(--radius-sm);
     margin-top: 10px;
     display: block;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .img-lightbox {
@@ -508,8 +524,10 @@
     <textarea id="postContent" rows="4" placeholder="어떤 고민이든 괜찮아요. 여기선 익명이에요." maxlength="500"></textarea>
     <div class="char-counter" id="postCharCounter">0/500</div>
     <div class="img-upload-row">
-      <label class="img-upload-label" for="imgFileInput">📷 사진 추가</label>
-      <input type="file" id="imgFileInput" accept="image/*" style="display:none">
+      <label class="img-upload-label">
+        📷 사진 추가
+        <input type="file" id="imgFileInput" accept="image/*">
+      </label>
       <div class="img-preview-wrap" id="imgPreviewWrap" style="display:none">
         <img id="imgPreview" src="" alt="미리보기">
         <button class="img-remove-btn" id="imgRemoveBtn" type="button">×</button>
@@ -971,6 +989,7 @@ function openLightbox(src) {
   box.className = 'img-lightbox';
   box.innerHTML = `<img src="${escapeHtml(src)}" alt="">`;
   box.addEventListener('click', () => box.remove());
+  box.addEventListener('touchend', () => box.remove(), { passive: true });
   document.body.appendChild(box);
 }
 
