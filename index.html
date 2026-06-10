@@ -584,7 +584,17 @@ async function loadPosts(reset = false) {
     return;
   }
 
-  const newCards = data.map(post => `
+  // 댓글 수 배치 조회 (한 번의 쿼리로 전체 포스트 커버)
+  const postIds = data.map(p => p.id);
+  const { data: commentRows } = await db.from('comments').select('post_id').in('post_id', postIds);
+  const commentCountMap = {};
+  (commentRows || []).forEach(c => {
+    commentCountMap[c.post_id] = (commentCountMap[c.post_id] || 0) + 1;
+  });
+
+  const newCards = data.map(post => {
+    const cCnt = commentCountMap[post.id] || 0;
+    return `
     <div class="post-card" id="post-${post.id}">
       <div class="post-header">
         <span class="cat-tag cat-${post.category}">${CAT_EMOJI[post.category] || ''} ${post.category}</span>
@@ -595,7 +605,7 @@ async function loadPosts(reset = false) {
         <button class="like-btn ${likedPosts.includes(String(post.id)) ? 'liked' : ''}" data-id="${post.id}" data-likes="${post.likes || 0}">
           ${likedPosts.includes(String(post.id)) ? '❤️' : '🤍'} 공감 <span class="like-count">${post.likes || 0}</span>
         </button>
-        <button class="comment-toggle" data-id="${post.id}">💬 댓글</button>
+        <button class="comment-toggle" data-id="${post.id}">💬 댓글${cCnt > 0 ? ` ${cCnt}개` : ''}</button>
       </div>
       <div class="comments-section" id="comments-${post.id}">
         <div class="comments-list" id="clist-${post.id}"></div>
@@ -605,7 +615,8 @@ async function loadPosts(reset = false) {
         </div>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   const existingLoadMore = document.getElementById('loadMoreBtn');
   if (existingLoadMore) existingLoadMore.remove();
