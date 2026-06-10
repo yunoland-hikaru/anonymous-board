@@ -366,6 +366,91 @@
 
   .load-more-btn:hover { border-color: var(--accent); color: var(--accent); }
 
+  .img-upload-row {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .img-upload-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 14px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .img-upload-label:hover { border-color: var(--accent); color: var(--accent); }
+
+  .img-preview-wrap {
+    position: relative;
+    display: inline-block;
+  }
+
+  .img-preview-wrap img {
+    max-height: 100px;
+    max-width: 180px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    display: block;
+  }
+
+  .img-remove-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background 0.15s;
+  }
+
+  .img-remove-btn:hover { background: var(--love); border-color: var(--love); }
+
+  .post-image {
+    width: 100%;
+    max-height: 360px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    margin-top: 10px;
+    display: block;
+    cursor: pointer;
+  }
+
+  .img-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 500;
+    cursor: zoom-out;
+  }
+
+  .img-lightbox img {
+    max-width: 92vw;
+    max-height: 92vh;
+    border-radius: var(--radius);
+    object-fit: contain;
+  }
+
   .empty-state {
     text-align: center;
     padding: 60px 20px;
@@ -422,6 +507,14 @@
     </div>
     <textarea id="postContent" rows="4" placeholder="어떤 고민이든 괜찮아요. 여기선 익명이에요." maxlength="500"></textarea>
     <div class="char-counter" id="postCharCounter">0/500</div>
+    <div class="img-upload-row">
+      <label class="img-upload-label" for="imgFileInput">📷 사진 추가</label>
+      <input type="file" id="imgFileInput" accept="image/*" style="display:none">
+      <div class="img-preview-wrap" id="imgPreviewWrap" style="display:none">
+        <img id="imgPreview" src="" alt="미리보기">
+        <button class="img-remove-btn" id="imgRemoveBtn" type="button">×</button>
+      </div>
+    </div>
     <button class="submit-btn" id="submitPost">고민 올리기</button>
   </div>
 
@@ -453,6 +546,7 @@ const POST_MIN = 10;
 const COOLDOWN_MS = 60_000;
 
 let selectedCat = null;
+let selectedImageFile = null;
 let currentFilter = '전체';
 let likedPosts = JSON.parse(localStorage.getItem('likedPosts') || '[]');
 let currentOffset = 0;
@@ -518,6 +612,35 @@ postContentEl.addEventListener('input', () => {
   autoResize(postContentEl);
 });
 
+const imgFileInput = document.getElementById('imgFileInput');
+const imgPreview = document.getElementById('imgPreview');
+const imgPreviewWrap = document.getElementById('imgPreviewWrap');
+const imgRemoveBtn = document.getElementById('imgRemoveBtn');
+
+imgFileInput.addEventListener('change', () => {
+  const file = imgFileInput.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('이미지는 5MB 이하만 업로드 가능해요');
+    imgFileInput.value = '';
+    return;
+  }
+  selectedImageFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    imgPreview.src = e.target.result;
+    imgPreviewWrap.style.display = 'inline-block';
+  };
+  reader.readAsDataURL(file);
+});
+
+imgRemoveBtn.addEventListener('click', () => {
+  selectedImageFile = null;
+  imgFileInput.value = '';
+  imgPreview.src = '';
+  imgPreviewWrap.style.display = 'none';
+});
+
 // Submit post
 document.getElementById('submitPost').addEventListener('click', async () => {
   const content = postContentEl.value.trim();
@@ -535,7 +658,24 @@ document.getElementById('submitPost').addEventListener('click', async () => {
   btn.disabled = true;
   btn.textContent = '올리는 중...';
 
-  const { error } = await db.from('posts').insert({ category: selectedCat, content, likes: 0 });
+  let imageUrl = null;
+  if (selectedImageFile) {
+    const ext = selectedImageFile.name.split('.').pop().toLowerCase();
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error: uploadError } = await db.storage
+      .from('post-images')
+      .upload(fileName, selectedImageFile, { contentType: selectedImageFile.type });
+    if (uploadError) {
+      showError('image upload', uploadError);
+      btn.disabled = false;
+      btn.textContent = '고민 올리기';
+      return;
+    }
+    const { data: urlData } = db.storage.from('post-images').getPublicUrl(fileName);
+    imageUrl = urlData.publicUrl;
+  }
+
+  const { error } = await db.from('posts').insert({ category: selectedCat, content, likes: 0, image_url: imageUrl });
 
   if (error) {
     showError('post insert', error);
@@ -545,6 +685,10 @@ document.getElementById('submitPost').addEventListener('click', async () => {
     postCharCounter.classList.remove('warn');
     autoResize(postContentEl);
     selectedCat = null;
+    selectedImageFile = null;
+    imgFileInput.value = '';
+    imgPreview.src = '';
+    imgPreviewWrap.style.display = 'none';
     document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
     localStorage.setItem('lastPostTime', String(Date.now()));
     showToast('고민이 올라갔어요 💜');
@@ -601,6 +745,7 @@ async function loadPosts(reset = false) {
         <span class="post-time">${timeAgo(post.created_at)}</span>
       </div>
       <div class="post-content">${escapeHtml(post.content)}</div>
+      ${post.image_url ? `<img class="post-image" src="${escapeHtml(post.image_url)}" loading="lazy" alt="" onclick="openLightbox(this.src)">` : ''}
       <div class="post-footer">
         <button class="like-btn ${likedPosts.includes(String(post.id)) ? 'liked' : ''}" data-id="${post.id}" data-likes="${post.likes || 0}">
           ${likedPosts.includes(String(post.id)) ? '❤️' : '🤍'} 공감 <span class="like-count">${post.likes || 0}</span>
@@ -819,6 +964,14 @@ async function submitReply(postId, parentId) {
     showError('reply insert', error);
   }
   btn.disabled = false;
+}
+
+function openLightbox(src) {
+  const box = document.createElement('div');
+  box.className = 'img-lightbox';
+  box.innerHTML = `<img src="${escapeHtml(src)}" alt="">`;
+  box.addEventListener('click', () => box.remove());
+  document.body.appendChild(box);
 }
 
 loadPosts(true);
