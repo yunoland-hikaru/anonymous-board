@@ -274,9 +274,47 @@
   .comment-item:last-child { border-bottom: none; }
 
   .comment-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-size: 11px;
     color: var(--muted);
     margin-top: 4px;
+  }
+
+  .reply-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+    padding: 0;
+    transition: color 0.15s;
+  }
+
+  .reply-btn:hover { color: var(--accent); }
+
+  .replies {
+    margin-top: 8px;
+    padding-left: 14px;
+    border-left: 2px solid var(--border);
+  }
+
+  .reply-item {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    color: #b8b8cc;
+    line-height: 1.65;
+  }
+
+  .reply-item:last-child { border-bottom: none; }
+
+  .reply-input-wrap {
+    margin-top: 8px;
+    padding-left: 14px;
+    border-left: 2px solid var(--accent-dim);
   }
 
   .comment-input-row {
@@ -653,17 +691,63 @@ async function loadComments(postId) {
     listEl.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px 0">불러오기 실패</p>';
     return 0;
   }
-  if (data.length === 0) {
+
+  const topLevel = data.filter(c => !c.parent_id);
+  const repliesMap = {};
+  data.filter(c => c.parent_id).forEach(c => {
+    if (!repliesMap[c.parent_id]) repliesMap[c.parent_id] = [];
+    repliesMap[c.parent_id].push(c);
+  });
+
+  if (topLevel.length === 0) {
     listEl.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px 0">아직 댓글이 없어요. 첫 댓글을 남겨보세요 💜</p>';
     return 0;
   }
 
-  listEl.innerHTML = data.map(c => `
-    <div class="comment-item">
-      <div>${escapeHtml(c.content)}</div>
-      <div class="comment-meta">${timeAgo(c.created_at)}</div>
-    </div>
-  `).join('');
+  listEl.innerHTML = topLevel.map(c => {
+    const replies = repliesMap[c.id] || [];
+    const repliesHtml = replies.map(r => `
+      <div class="reply-item">
+        <div>${escapeHtml(r.content)}</div>
+        <div class="comment-meta">${timeAgo(r.created_at)}</div>
+      </div>
+    `).join('');
+
+    return `
+      <div class="comment-item" id="comment-${c.id}">
+        <div>${escapeHtml(c.content)}</div>
+        <div class="comment-meta">
+          <span>${timeAgo(c.created_at)}</span>
+          <span>·</span>
+          <button class="reply-btn" data-comment="${c.id}" data-post="${postId}">답글</button>
+        </div>
+        <div class="reply-input-wrap" id="reply-wrap-${c.id}" style="display:none">
+          <div class="comment-input-row">
+            <textarea placeholder="답글을 남겨요" id="rinput-${c.id}" rows="1" maxlength="${COMMENT_MAX}"></textarea>
+            <button class="comment-submit" data-parent="${c.id}" data-post="${postId}">등록</button>
+          </div>
+        </div>
+        <div class="replies" id="replies-${c.id}">${repliesHtml}</div>
+      </div>
+    `;
+  }).join('');
+
+  listEl.querySelectorAll('.reply-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const wrap = document.getElementById('reply-wrap-' + btn.dataset.comment);
+      const isOpen = wrap.style.display !== 'none';
+      wrap.style.display = isOpen ? 'none' : 'block';
+      if (!isOpen) {
+        const rinput = document.getElementById('rinput-' + btn.dataset.comment);
+        rinput.focus();
+        rinput.addEventListener('input', () => autoResize(rinput));
+      }
+    });
+  });
+
+  listEl.querySelectorAll('.comment-submit[data-parent]').forEach(btn => {
+    btn.addEventListener('click', () => submitReply(btn.dataset.post, btn.dataset.parent));
+  });
 
   return data.length;
 }
@@ -686,6 +770,42 @@ async function submitComment(postId) {
     showToast('댓글이 등록됐어요 💜');
   } else {
     showError('comment insert', error);
+  }
+  btn.disabled = false;
+}
+
+async function submitReply(postId, parentId) {
+  const input = document.getElementById('rinput-' + parentId);
+  const content = input.value.trim();
+  if (!content) return;
+
+  const btn = document.querySelector(`.comment-submit[data-parent="${parentId}"]`);
+  btn.disabled = true;
+
+  const { error } = await db.from('comments').insert({ post_id: postId, content, parent_id: parentId });
+
+  if (!error) {
+    input.value = '';
+    autoResize(input);
+    document.getElementById('reply-wrap-' + parentId).style.display = 'none';
+
+    const { data } = await db.from('comments')
+      .select('*')
+      .eq('post_id', postId)
+      .eq('parent_id', parentId)
+      .order('created_at', { ascending: true });
+
+    if (data) {
+      document.getElementById('replies-' + parentId).innerHTML = data.map(r => `
+        <div class="reply-item">
+          <div>${escapeHtml(r.content)}</div>
+          <div class="comment-meta">${timeAgo(r.created_at)}</div>
+        </div>
+      `).join('');
+    }
+    showToast('답글이 등록됐어요 💜');
+  } else {
+    showError('reply insert', error);
   }
   btn.disabled = false;
 }
