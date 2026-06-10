@@ -690,23 +690,6 @@ async function submitComment(postId) {
   btn.disabled = false;
 }
 
-async function diagnosePerm() {
-  const { error } = await db.from('posts')
-    .insert({ category: '__test__', content: '__diag__', likes: 0 })
-    .select();
-  if (error) {
-    console.warn('[diag] INSERT 권한 없음 →', error.code, error.message);
-    if (error.code === '42501' || error.message?.includes('policy')) {
-      console.warn('[diag] 원인: Supabase RLS 정책 없음');
-      console.warn('[diag] 해결: Supabase Dashboard → Authentication → Policies → posts 테이블에 anon INSERT 정책 추가');
-    }
-  } else {
-    await db.from('posts').delete().eq('category', '__test__').eq('content', '__diag__');
-    console.log('[diag] INSERT 권한 정상');
-  }
-}
-
-diagnosePerm();
 loadPosts(true);
 </script>
 </body>
