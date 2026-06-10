@@ -381,19 +381,19 @@
     align-items: center;
     gap: 5px;
     padding: 8px 16px;
-    border: 1px dashed var(--border);
+    border: 1px solid var(--accent);
     border-radius: var(--radius-sm);
-    color: var(--muted);
+    color: var(--accent);
     font-size: 13px;
     cursor: pointer;
     transition: all 0.15s;
     min-height: 44px;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
-    background: transparent;
+    background: var(--accent-dim);
   }
 
-  .img-upload-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .img-upload-btn:hover { background: var(--accent); color: #fff; }
   .img-upload-btn:active { opacity: 0.7; }
 
   .img-preview-wrap {
