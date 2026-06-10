@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>고민상담소</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f11;
+    --surface: #18181c;
+    --surface2: #222228;
+    --border: #2e2e38;
+    --text: #f0f0f2;
+    --muted: #888898;
+    --accent: #a78bfa;
+    --accent-dim: #1e1a2e;
+    --love: #f472b6;
+    --work: #60a5fa;
+    --relation: #34d399;
+    --other: #fbbf24;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 0;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    background: rgba(15,15,17,0.92);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+
+  header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--accent);
+  }
+
+  header p {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .container {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 16px;
+  }
+
+  .write-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin: 24px 0 20px;
+  }
+
+  .write-box h2 {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  .cat-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+
+  .cat-btn {
+    padding: 6px 14px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+
+  .cat-btn:hover { border-color: var(--accent); color: var(--text); }
+  .cat-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); font-weight: 500; }
+
+  textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 12px;
+    resize: none;
+    outline: none;
+    line-height: 1.7;
+    transition: border-color 0.15s;
+    overflow: hidden;
+  }
+
+  textarea::placeholder { color: var(--muted); }
+  textarea:focus { border-color: var(--accent); }
+
+  .char-counter {
+    text-align: right;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .char-counter.warn { color: var(--love); }
+
+  .submit-btn {
+    margin-top: 10px;
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    color: #0f0f11;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .submit-btn:hover { opacity: 0.85; }
+  .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .filter-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .filter-btn {
+    padding: 5px 14px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+
+  .filter-btn:hover { color: var(--text); }
+  .filter-btn.active { background: var(--surface2); border-color: var(--border); color: var(--text); font-weight: 500; }
+
+  .post-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-bottom: 12px;
+    transition: border-color 0.15s;
+  }
+
+  .post-card:hover { border-color: #3e3e4e; }
+
+  .post-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .cat-tag {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 100px;
+    letter-spacing: 0.3px;
+  }
+
+  .cat-연애 { background: rgba(244,114,182,0.15); color: var(--love); }
+  .cat-직장 { background: rgba(96,165,250,0.15); color: var(--work); }
+  .cat-인간관계 { background: rgba(52,211,153,0.15); color: var(--relation); }
+  .cat-기타 { background: rgba(251,191,36,0.15); color: var(--other); }
+
+  .post-time {
+    font-size: 12px;
+    color: var(--muted);
+    margin-left: auto;
+  }
+
+  .post-content {
+    font-size: 14px;
+    color: #d0d0e0;
+    line-height: 1.75;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .post-footer {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .like-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 4px 12px;
+    color: var(--muted);
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+
+  .like-btn:hover { border-color: #f472b6; color: #f472b6; }
+  .like-btn.liked { border-color: #f472b6; color: #f472b6; background: rgba(244,114,182,0.08); }
+  .like-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .comment-toggle {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: color 0.15s;
+  }
+
+  .comment-toggle:hover { color: var(--text); }
+
+  .comments-section {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    display: none;
+  }
+
+  .comments-section.open { display: block; }
+
+  .comment-item {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    color: #c0c0d0;
+    line-height: 1.65;
+  }
+
+  .comment-item:last-child { border-bottom: none; }
+
+  .comment-meta {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .comment-input-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    align-items: flex-end;
+  }
+
+  .comment-input-row textarea {
+    flex: 1;
+    min-height: 40px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .comment-submit {
+    padding: 0 16px;
+    height: 40px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color 0.15s;
+    flex-shrink: 0;
+  }
+
+  .comment-submit:hover { border-color: var(--accent); color: var(--accent); }
+  .comment-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .load-more-btn {
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    margin-top: 4px;
+    margin-bottom: 32px;
+    transition: all 0.15s;
+  }
+
+  .load-more-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+
+  .empty-state p:first-child { font-size: 32px; margin-bottom: 10px; }
+  .empty-state p:last-child { font-size: 14px; }
+
+  .loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 20px;
+    border-radius: 100px;
+    font-size: 13px;
+    transition: transform 0.3s ease;
+    z-index: 999;
+    white-space: nowrap;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1>고민상담소</h1>
+    <p>익명으로 털어놓고, 익명으로 위로받아요</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="write-box">
+    <h2>고민 털어놓기</h2>
+    <div class="cat-row">
+      <button class="cat-btn" data-cat="연애">💗 연애</button>
+      <button class="cat-btn" data-cat="직장">💼 직장</button>
+      <button class="cat-btn" data-cat="인간관계">🤝 인간관계</button>
+      <button class="cat-btn" data-cat="기타">💬 기타</button>
+    </div>
+    <textarea id="postContent" rows="4" placeholder="어떤 고민이든 괜찮아요. 여기선 익명이에요." maxlength="500"></textarea>
+    <div class="char-counter" id="postCharCounter">0/500</div>
+    <button class="submit-btn" id="submitPost">고민 올리기</button>
+  </div>
+
+  <div class="filter-row">
+    <button class="filter-btn active" data-filter="전체">전체</button>
+    <button class="filter-btn" data-filter="연애">💗 연애</button>
+    <button class="filter-btn" data-filter="직장">💼 직장</button>
+    <button class="filter-btn" data-filter="인간관계">🤝 인간관계</button>
+    <button class="filter-btn" data-filter="기타">💬 기타</button>
+  </div>
+
+  <div id="postList"><div class="loading">불러오는 중...</div></div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://dnpockkrhuufppuxoyyl.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_Tu478jr1UIHstLcRkYJE4g_zLpL7vn4';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const CAT_EMOJI = { '연애': '💗', '직장': '💼', '인간관계': '🤝', '기타': '💬' };
+const PAGE_SIZE = 15;
+const POST_MAX = 500;
+const COMMENT_MAX = 200;
+const POST_MIN = 10;
+const COOLDOWN_MS = 60_000;
+
+let selectedCat = null;
+let currentFilter = '전체';
+let likedPosts = JSON.parse(localStorage.getItem('likedPosts') || '[]');
+let currentOffset = 0;
+let totalCount = 0;
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function timeAgo(dateStr) {
+  const diff = (Date.now() - new Date(dateStr)) / 1000;
+  if (diff < 60) return '방금 전';
+  if (diff < 3600) return Math.floor(diff / 60) + '분 전';
+  if (diff < 86400) return Math.floor(diff / 3600) + '시간 전';
+  return Math.floor(diff / 86400) + '일 전';
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+
+// Category buttons
+document.querySelectorAll('.cat-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedCat = btn.dataset.cat;
+  });
+});
+
+// Filter buttons
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.filter;
+    loadPosts(true);
+  });
+});
+
+// Post textarea: auto-resize + char counter
+const postContentEl = document.getElementById('postContent');
+const postCharCounter = document.getElementById('postCharCounter');
+
+postContentEl.addEventListener('input', () => {
+  const len = postContentEl.value.length;
+  postCharCounter.textContent = `${len}/${POST_MAX}`;
+  postCharCounter.classList.toggle('warn', len >= POST_MAX * 0.9);
+  autoResize(postContentEl);
+});
+
+// Submit post
+document.getElementById('submitPost').addEventListener('click', async () => {
+  const content = postContentEl.value.trim();
+  if (!selectedCat) { showToast('카테고리를 선택해주세요'); return; }
+  if (content.length < POST_MIN) { showToast(`최소 ${POST_MIN}자 이상 입력해주세요`); return; }
+
+  const lastPost = parseInt(localStorage.getItem('lastPostTime') || '0');
+  const remaining = COOLDOWN_MS - (Date.now() - lastPost);
+  if (remaining > 0) {
+    showToast(`${Math.ceil(remaining / 1000)}초 후에 다시 올릴 수 있어요`);
+    return;
+  }
+
+  const btn = document.getElementById('submitPost');
+  btn.disabled = true;
+  btn.textContent = '올리는 중...';
+
+  const { error } = await db.from('posts').insert({ category: selectedCat, content });
+
+  if (error) {
+    showToast('오류가 발생했어요 😢');
+  } else {
+    postContentEl.value = '';
+    postCharCounter.textContent = `0/${POST_MAX}`;
+    postCharCounter.classList.remove('warn');
+    autoResize(postContentEl);
+    selectedCat = null;
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+    localStorage.setItem('lastPostTime', String(Date.now()));
+    showToast('고민이 올라갔어요 💜');
+    loadPosts(true);
+  }
+  btn.disabled = false;
+  btn.textContent = '고민 올리기';
+});
+
+async function loadPosts(reset = false) {
+  const listEl = document.getElementById('postList');
+
+  if (reset) {
+    currentOffset = 0;
+    totalCount = 0;
+    listEl.innerHTML = '<div class="loading">불러오는 중...</div>';
+  }
+
+  let query = db.from('posts')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(currentOffset, currentOffset + PAGE_SIZE - 1);
+
+  if (currentFilter !== '전체') query = query.eq('category', currentFilter);
+
+  const { data, error, count } = await query;
+
+  if (error || !data) {
+    listEl.innerHTML = '<div class="empty-state"><p>😢</p><p>불러오기에 실패했어요</p></div>';
+    return;
+  }
+
+  totalCount = count || 0;
+
+  if (data.length === 0 && currentOffset === 0) {
+    listEl.innerHTML = '<div class="empty-state"><p>🌙</p><p>아직 고민이 없어요. 첫 번째로 털어놓아 보세요</p></div>';
+    return;
+  }
+
+  const newCards = data.map(post => `
+    <div class="post-card" id="post-${post.id}">
+      <div class="post-header">
+        <span class="cat-tag cat-${post.category}">${CAT_EMOJI[post.category] || ''} ${post.category}</span>
+        <span class="post-time">${timeAgo(post.created_at)}</span>
+      </div>
+      <div class="post-content">${escapeHtml(post.content)}</div>
+      <div class="post-footer">
+        <button class="like-btn ${likedPosts.includes(String(post.id)) ? 'liked' : ''}" data-id="${post.id}" data-likes="${post.likes || 0}">
+          ${likedPosts.includes(String(post.id)) ? '❤️' : '🤍'} 공감 <span class="like-count">${post.likes || 0}</span>
+        </button>
+        <button class="comment-toggle" data-id="${post.id}">💬 댓글</button>
+      </div>
+      <div class="comments-section" id="comments-${post.id}">
+        <div class="comments-list" id="clist-${post.id}"></div>
+        <div class="comment-input-row">
+          <textarea placeholder="따뜻한 한마디를 남겨요" id="cinput-${post.id}" rows="1" maxlength="${COMMENT_MAX}"></textarea>
+          <button class="comment-submit" data-id="${post.id}">등록</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  const existingLoadMore = document.getElementById('loadMoreBtn');
+  if (existingLoadMore) existingLoadMore.remove();
+
+  if (reset) {
+    listEl.innerHTML = newCards;
+  } else {
+    listEl.insertAdjacentHTML('beforeend', newCards);
+  }
+
+  currentOffset += data.length;
+  const hasMore = currentOffset < totalCount;
+
+  if (hasMore) {
+    listEl.insertAdjacentHTML('beforeend',
+      `<button class="load-more-btn" id="loadMoreBtn">더 불러오기 (${totalCount - currentOffset}개 남음)</button>`
+    );
+    document.getElementById('loadMoreBtn').addEventListener('click', () => loadPosts(false));
+  }
+
+  data.forEach(post => {
+    const card = document.getElementById('post-' + post.id);
+    if (!card) return;
+
+    card.querySelector('.like-btn').addEventListener('click', function() { toggleLike(this); });
+    card.querySelector('.comment-toggle').addEventListener('click', function() { toggleComments(post.id, this); });
+    card.querySelector('.comment-submit').addEventListener('click', function() { submitComment(post.id); });
+
+    const cinput = document.getElementById('cinput-' + post.id);
+    cinput.addEventListener('input', () => autoResize(cinput));
+  });
+}
+
+async function toggleLike(btn) {
+  if (btn.disabled) return;
+  btn.disabled = true;
+
+  const id = String(btn.dataset.id);
+  const liked = likedPosts.includes(id);
+  const countEl = btn.querySelector('.like-count');
+  let likes = parseInt(btn.dataset.likes) || 0;
+
+  if (liked) {
+    likes = Math.max(0, likes - 1);
+    likedPosts = likedPosts.filter(p => p !== id);
+    btn.classList.remove('liked');
+    btn.firstChild.textContent = '🤍 ';
+  } else {
+    likes++;
+    likedPosts.push(id);
+    btn.classList.add('liked');
+    btn.firstChild.textContent = '❤️ ';
+  }
+
+  btn.dataset.likes = likes;
+  countEl.textContent = likes;
+  localStorage.setItem('likedPosts', JSON.stringify(likedPosts));
+
+  await db.from('posts').update({ likes }).eq('id', id);
+  btn.disabled = false;
+}
+
+async function toggleComments(postId, toggleBtn) {
+  const section = document.getElementById('comments-' + postId);
+  const isOpen = section.classList.contains('open');
+  section.classList.toggle('open');
+  if (!isOpen) {
+    const cnt = await loadComments(postId);
+    toggleBtn.textContent = cnt > 0 ? `💬 댓글 ${cnt}개` : '💬 댓글';
+  }
+}
+
+async function loadComments(postId) {
+  const listEl = document.getElementById('clist-' + postId);
+  listEl.innerHTML = '<div class="loading" style="padding:12px 0;font-size:13px">불러오는 중...</div>';
+
+  const { data, error } = await db.from('comments')
+    .select('*')
+    .eq('post_id', postId)
+    .order('created_at', { ascending: true });
+
+  if (error || !data) {
+    listEl.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px 0">불러오기 실패</p>';
+    return 0;
+  }
+  if (data.length === 0) {
+    listEl.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px 0">아직 댓글이 없어요. 첫 댓글을 남겨보세요 💜</p>';
+    return 0;
+  }
+
+  listEl.innerHTML = data.map(c => `
+    <div class="comment-item">
+      <div>${escapeHtml(c.content)}</div>
+      <div class="comment-meta">${timeAgo(c.created_at)}</div>
+    </div>
+  `).join('');
+
+  return data.length;
+}
+
+async function submitComment(postId) {
+  const input = document.getElementById('cinput-' + postId);
+  const content = input.value.trim();
+  if (!content) return;
+
+  const btn = document.querySelector(`.comment-submit[data-id="${postId}"]`);
+  btn.disabled = true;
+
+  const { error } = await db.from('comments').insert({ post_id: postId, content });
+  if (!error) {
+    input.value = '';
+    autoResize(input);
+    const cnt = await loadComments(postId);
+    const toggleBtn = document.querySelector(`.comment-toggle[data-id="${postId}"]`);
+    if (toggleBtn) toggleBtn.textContent = cnt > 0 ? `💬 댓글 ${cnt}개` : '💬 댓글';
+    showToast('댓글이 등록됐어요 💜');
+  } else {
+    showToast('오류가 발생했어요 😢');
+  }
+  btn.disabled = false;
+}
+
+loadPosts(true);
+</script>
+</body>
+</html>
