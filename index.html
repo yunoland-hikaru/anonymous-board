@@ -376,8 +376,7 @@
     flex-wrap: wrap;
   }
 
-  .img-upload-label {
-    position: relative;
+  .img-upload-btn {
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -391,19 +390,11 @@
     min-height: 44px;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
+    background: transparent;
   }
 
-  .img-upload-label:hover { border-color: var(--accent); color: var(--accent); }
-  .img-upload-label:active { opacity: 0.7; }
-
-  .img-upload-label input[type="file"] {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0;
-    cursor: pointer;
-  }
+  .img-upload-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .img-upload-btn:active { opacity: 0.7; }
 
   .img-preview-wrap {
     position: relative;
@@ -526,10 +517,8 @@
     <textarea id="postContent" rows="4" placeholder="어떤 고민이든 괜찮아요. 여기선 익명이에요." maxlength="500"></textarea>
     <div class="char-counter" id="postCharCounter">0/500</div>
     <div class="img-upload-row">
-      <label class="img-upload-label">
-        📷 사진 추가
-        <input type="file" id="imgFileInput" accept="image/*">
-      </label>
+      <button type="button" class="img-upload-btn" id="imgUploadBtn">📷 사진 추가</button>
+      <input type="file" id="imgFileInput" accept="image/*" style="display:none">
       <div class="img-preview-wrap" id="imgPreviewWrap" style="display:none">
         <img id="imgPreview" src="" alt="미리보기">
         <button class="img-remove-btn" id="imgRemoveBtn" type="button">×</button>
@@ -636,6 +625,8 @@ const imgFileInput = document.getElementById('imgFileInput');
 const imgPreview = document.getElementById('imgPreview');
 const imgPreviewWrap = document.getElementById('imgPreviewWrap');
 const imgRemoveBtn = document.getElementById('imgRemoveBtn');
+
+document.getElementById('imgUploadBtn').addEventListener('click', () => imgFileInput.click());
 
 imgFileInput.addEventListener('change', () => {
   const file = imgFileInput.files[0];
@@ -765,7 +756,7 @@ async function loadPosts(reset = false) {
         <span class="post-time">${timeAgo(post.created_at)}</span>
       </div>
       <div class="post-content">${escapeHtml(post.content)}</div>
-      ${post.image_url ? `<img class="post-image" src="${escapeHtml(post.image_url)}" loading="lazy" alt="" onclick="openLightbox(this.src)">` : ''}
+      ${post.image_url ? `<img class="post-image" src="${escapeHtml(post.image_url)}" alt="" onclick="openLightbox(this.src)">` : ''}
       <div class="post-footer">
         <button class="like-btn ${likedPosts.includes(String(post.id)) ? 'liked' : ''}" data-id="${post.id}" data-likes="${post.likes || 0}">
           ${likedPosts.includes(String(post.id)) ? '❤️' : '🤍'} 공감 <span class="like-count">${post.likes || 0}</span>
